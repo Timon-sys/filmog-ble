@@ -66,12 +66,14 @@ Every command starts with `55 aa`, followed by a command byte and its payload.
 |---|---|
 | `55 aa 00` | smoke on |
 | `55 aa 02` | smoke off, the only way to stop it |
-| `55 aa 04 <u32 big-endian>` | fog power; the remote uses 15000 to 40000 in steps of 5000 |
-| `55 aa 05 <fan %> 64` | fan; the remote uses 61, 74, 87 and 100 |
+| `55 aa 04 <u32 big-endian>` | fog power; the remote goes from 8000 (its lowest setting) to 40000, and we've also seen 15000, 25000, 30000 and 35000 |
+| `55 aa 05 <fan %> 64` | fan; we've seen 35, 61, 74, 87 and 100, which fits steps of 13 |
 | `55 aa 07 00 00` | sent by the remote when it connects; purpose unknown, not needed |
 | `55 aa 08 <n> 00` | remote keepalive, about every 0.5 s; `n` drifts slowly (the remote's battery?); not needed |
 
 Smoke starts about 130 ms after `00` and stops about 100 ms after `02`. The fogger acknowledges each write on `FFF3` with `88 00 04 00 01 10 11`.
+
+The fogger keeps its power and fan settings when the remote or the PC disconnects. It also keeps fogging when the Bluetooth link drops: in a test, the PC disconnected 3 seconds into a burst, and the smoke ran for 25 seconds until the PC reconnected and sent `02`.
 
 ### Status frame
 
@@ -86,7 +88,7 @@ Byte 10 is `02` once after power-up and `00` from then on. That's the "oil tank 
 
 ### Still unknown
 
-We don't know the battery scale, or what bytes 3 and 9 mean. We also don't know whether fan values below 61 or power values outside 15000 to 40000 do anything useful, or what `07` and the `08` keepalive tell the fogger. If you have a FilMog and figure any of these out, please open an issue.
+We don't know the battery scale, or what bytes 3 and 9 mean. We also don't know whether fan values below 35 or power values outside 8000 to 40000 do anything useful, or what `07` and the `08` keepalive tell the fogger. If you have a FilMog and figure any of these out, please open an issue.
 
 ## Notes
 
