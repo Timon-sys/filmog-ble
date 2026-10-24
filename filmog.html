@@ -54,8 +54,37 @@
   .ctl .lv { display: flex; justify-content: space-between; align-items: center; gap: 8px;
              color: var(--dim); font-size: 13px; }
   .ctl .lv input[type=number] { width: 104px; padding: 4px 8px; font-size: 13px; text-align: right; }
-  .ctl .range { color: var(--dim); font-size: 12px; }
-  input[type=range] { width: 100%; accent-color: var(--acc); }
+  .ctl .lv input.outside { border-color: var(--warn); color: #f2cc60; }
+  body.unlocked .ctl .lv input.outside { border-color: var(--bad); color: #ffb3ad; }
+  /* sliders: 20px thumb, so value positions run from 10px to (100% - 10px) */
+  .slider { position: relative; }
+  body.unlocked .slider { padding-bottom: 10px; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; margin: 0;
+                      background: transparent; cursor: pointer; --p: 0; --fillc: var(--acc); }
+  input[type=range]:disabled { cursor: default; --fillc: #3a3f48; }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 10px; border-radius: 5px;
+    background: linear-gradient(to right, var(--fillc) 0, var(--fillc) calc(10px + (100% - 20px) * var(--p)),
+                                #2a2f38 calc(10px + (100% - 20px) * var(--p)), #2a2f38 100%); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px; margin-top: -5px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--fillc); box-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
+  input[type=range]:disabled::-webkit-slider-thumb { background: #6b7280; }
+  input[type=range]::-moz-range-track { height: 10px; border-radius: 5px; background: #2a2f38; }
+  input[type=range]::-moz-range-progress { height: 10px; border-radius: 5px; background: var(--fillc); }
+  input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff;
+                                        border: 3px solid var(--fillc); }
+  input[type=range]:focus-visible { outline: none; }
+  input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(88, 166, 255, .35); }
+  .safe { display: none; position: absolute; top: 30px; height: 5px; border-radius: 3px;
+          background: var(--ok); opacity: .75;
+          left: calc(10px + (100% - 20px) * var(--lo, 0));
+          width: calc((100% - 20px) * (var(--hi, 1) - var(--lo, 0))); }
+  body.unlocked .safe { display: block; }
+  .scale { display: flex; justify-content: space-between; gap: 8px; color: var(--dim); font-size: 12px;
+           font-variant-numeric: tabular-nums; }
+  .scale .mid { text-align: center; }
+  body.unlocked .scale .mid { color: var(--ok); }
   #banner { display: none; background: #3a1f1f; border: 1px solid var(--bad); color: #ffd7d5;
             border-radius: 12px; padding: 12px 14px; font-weight: 600; }
   #banner.show { display: block; }
@@ -114,13 +143,13 @@
   <section class="panel controls grid" style="grid-template-columns: 1fr 1fr">
     <div class="ctl">
       <span class="lv">Fog power (coil) <input id="powerN" type="number" disabled></span>
-      <input id="power" type="range" disabled>
-      <span class="range" id="powerR"></span>
+      <div class="slider"><input id="power" type="range" disabled><div class="safe" id="powerSafe"></div></div>
+      <div class="scale"><span id="powerLo"></span><span class="mid" id="powerR"></span><span id="powerHi"></span></div>
     </div>
     <div class="ctl">
       <span class="lv">Fan (air pump) % <input id="fanN" type="number" disabled></span>
-      <input id="fan" type="range" disabled>
-      <span class="range" id="fanR"></span>
+      <div class="slider"><input id="fan" type="range" disabled><div class="safe" id="fanSafe"></div></div>
+      <div class="scale"><span id="fanLo"></span><span class="mid" id="fanR"></span><span id="fanHi"></span></div>
     </div>
   </section>
 
@@ -136,11 +165,11 @@
   <section id="danger">
     <label><input type="checkbox" id="unlock"> Unlock all values</label>
     <p>This removes the safe limits. You can send any fog power (0 to 100000 on the slider, any number in the
-      field), any fan value from 0 to 255, and hold or burst for up to 60 seconds. The pump guard then only
-      warns instead of stopping the smoke.</p>
+      field), any fan value from 0 to 100, and hold or burst for up to 60 seconds. The green bands under the
+      sliders show the safe range. The pump guard then only warns instead of stopping the smoke.</p>
     <p>The FilMog is a heated coil with an air pump. With the fan at 0 the coil heats with no airflow and the
-      wick cooks; you can hear it crackle. Power below 8000 makes no smoke, fan values above 100 do nothing
-      more, and nothing above power 40000 has been tested. You use this at your own risk.</p>
+      wick cooks; you can hear it crackle. Power below 8000 makes no smoke, and nothing above power 40000 has
+      been tested. You use this at your own risk.</p>
   </section>
 </main>
 
@@ -151,7 +180,7 @@ const BACKLOG_MS = 1500;
 const SAFE = { powerMin: 8000, powerMax: 40000, powerStep: 100, powerAny: 40000,
                fanMin: 22, fanMax: 100, holdMs: 15000, burstMaxMs: 10000 };
 const OPEN = { powerMin: 0, powerMax: 100000, powerStep: 100, powerAny: 4294967295,
-               fanMin: 0, fanMax: 255, holdMs: 60000, burstMaxMs: 60000 };
+               fanMin: 0, fanMax: 100, holdMs: 60000, burstMaxMs: 60000 };  // pump tops out at 100
 const $ = id => document.getElementById(id);
 
 let dev = null, tx = null, connectedAt = 0, lastFrameAt = 0;
@@ -197,6 +226,7 @@ function setConnected(on) {
   for (const el of document.querySelectorAll("#hold, .burst, #burstMs, #burstGo, #power, #fan, #powerN, #fanN"))
     el.disabled = !on;
   $("connect").textContent = on ? "Disconnect" : "Connect";
+  paintSlider("power"); paintSlider("fan");
 }
 
 function banner(text, kind = "") {
@@ -216,9 +246,11 @@ function applyLimits() {
     $(n).max = isPower ? L.powerAny : L.fanMax;
     $(n).step = isPower ? (unlocked ? 1 : L.powerStep) : 1;
   }
-  $("powerR").textContent = unlocked ? `0 to ${L.powerMax} on the slider, any value in the field`
-                                     : `${L.powerMin} to ${L.powerMax} (remote's range)`;
-  $("fanR").textContent = unlocked ? "0 to 255 (pump tops out at 100)" : `${L.fanMin} to ${L.fanMax}`;
+  $("powerLo").textContent = L.powerMin; $("powerHi").textContent = L.powerMax;
+  $("fanLo").textContent = L.fanMin; $("fanHi").textContent = L.fanMax;
+  $("powerR").textContent = unlocked ? `safe ${SAFE.powerMin} to ${SAFE.powerMax} · field takes any value`
+                                     : "remote's range";
+  $("fanR").textContent = unlocked ? `safe ${SAFE.fanMin} to ${SAFE.fanMax}` : "";
   $("burstMs").max = L.burstMaxMs;
   $("holdHint").textContent = `or hold Space · max ${L.holdMs / 1000} s`;
   $("mode").textContent = unlocked ? "UNLOCKED" : "safe limits";
@@ -234,6 +266,22 @@ function showValues() {
   if (cur.fan !== null && document.activeElement !== $("fan") && document.activeElement !== $("fanN")) {
     $("fan").value = cur.fan; $("fanN").value = cur.fan;
   }
+  paintSlider("power"); paintSlider("fan");
+}
+
+// fill up to the value, green band = safe range (shown when unlocked), red/orange = value outside it
+function paintSlider(id) {
+  const el = $(id), min = Number(el.min), max = Number(el.max);
+  const toP = x => max > min ? Math.min(1, Math.max(0, (x - min) / (max - min))) : 0;
+  const lo = id === "power" ? SAFE.powerMin : SAFE.fanMin, hi = id === "power" ? SAFE.powerMax : SAFE.fanMax;
+  const actual = $(id + "N").value === "" ? Number(el.value) : Number($(id + "N").value);
+  const outside = actual < lo || actual > hi;
+  el.style.setProperty("--p", toP(Number(el.value)));
+  if (!el.disabled) el.style.setProperty("--fillc", outside ? (unlocked ? "var(--bad)" : "var(--warn)") : "var(--acc)");
+  else el.style.removeProperty("--fillc");
+  $(id + "Safe").style.setProperty("--lo", toP(lo));
+  $(id + "Safe").style.setProperty("--hi", toP(hi));
+  $(id + "N").classList.toggle("outside", $(id + "N").value !== "" && outside);
 }
 
 // In safe mode, nothing fogs until the fogger's stored settings are known and inside the safe limits.
@@ -421,20 +469,23 @@ function commitPower(v) {
   const L = lim();
   const p = clamp(v, L.powerMin, L.powerAny);
   $("power").value = p; $("powerN").value = p;
+  paintSlider("power");
   sendPower(p);
 }
 function commitFan(v) {
   const L = lim();
   const f = clamp(v, L.fanMin, L.fanMax);
   $("fan").value = f; $("fanN").value = f;
+  paintSlider("fan");
   sendFan(f);
 }
-$("power").addEventListener("input", e => $("powerN").value = e.target.value);
+$("power").addEventListener("input", e => { $("powerN").value = e.target.value; paintSlider("power"); });
 $("power").addEventListener("change", e => { commitPower(e.target.value); e.target.blur(); });
 $("powerN").addEventListener("change", e => { commitPower(e.target.value); e.target.blur(); });
-$("fan").addEventListener("input", e => $("fanN").value = e.target.value);
+$("fan").addEventListener("input", e => { $("fanN").value = e.target.value; paintSlider("fan"); });
 $("fan").addEventListener("change", e => { commitFan(e.target.value); e.target.blur(); });
 $("fanN").addEventListener("change", e => { commitFan(e.target.value); e.target.blur(); });
+for (const id of ["power", "fan"]) $(id + "N").addEventListener("input", () => paintSlider(id));
 
 $("unlock").addEventListener("change", e => {
   unlocked = e.target.checked;
