@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FilMog Control</title>
+<style>
+  :root {
+    --bg: #111317; --panel: #1a1d23; --line: #2a2f38; --fg: #e8e8e8; --dim: #8a929e;
+    --ok: #3fb950; --bad: #f85149; --warn: #d29922; --acc: #58a6ff; --fog: #c9d1d9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.4 "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 20px; margin: 0; flex: 1; letter-spacing: .3px; }
+  .pill { padding: 4px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line);
+          color: var(--dim); font-weight: 600; font-size: 13px; }
+  .pill.ok { color: var(--ok); border-color: #2c5a35; }
+  .pill.bad { color: var(--bad); border-color: #6b2b28; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--fg);
+           border-radius: 10px; padding: 9px 14px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--acc); }
+  button:disabled { opacity: .4; cursor: default; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .stat .k { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .6px; }
+  .stat .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  #fogState.on { color: var(--bad); }
+  .bats { display: grid; gap: 6px; margin-top: 6px; }
+  .bat { display: grid; grid-template-columns: 14px 1fr 34px; align-items: center; gap: 6px; }
+  .bat span { color: var(--dim); font-size: 12px; font-weight: 700; }
+  .bat b { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+  .track { height: 12px; border-radius: 4px; background: #0d0f13; border: 1px solid var(--line); overflow: hidden; }
+  .fill { height: 100%; width: 0; background: var(--ok); transition: width .4s, background .4s; }
+  #hold { width: 100%; height: 150px; font-size: 26px; font-weight: 800; border-radius: 18px;
+          background: #20242c; border: 2px solid var(--line); user-select: none; touch-action: none; }
+  #hold.active { background: #3a1f1f; border-color: var(--bad); color: #fff;
+                 box-shadow: 0 0 40px rgba(248, 81, 73, .35) inset; }
+  #hold small { display: block; font-size: 13px; font-weight: 500; color: var(--dim); margin-top: 6px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .row > span { color: var(--dim); }
+  .custom { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); }
+  #burstMs { width: 86px; font: inherit; background: #0d0f13; color: var(--fg); border: 1px solid var(--line);
+             border-radius: 10px; padding: 8px 10px; font-variant-numeric: tabular-nums; }
+  #burstMs:focus { outline: none; border-color: var(--acc); }
+  #stop { background: var(--bad); border-color: var(--bad); color: #fff; font-weight: 800;
+          font-size: 18px; padding: 12px 22px; margin-left: auto; }
+  label { display: grid; gap: 4px; }
+  label .lv { display: flex; justify-content: space-between; color: var(--dim); font-size: 13px; }
+  label .lv b { color: var(--fg); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--acc); }
+  #banner { display: none; background: #3a1f1f; border: 1px solid var(--bad); color: #ffd7d5;
+            border-radius: 12px; padding: 12px 14px; font-weight: 600; }
+  #banner.show { display: block; }
+  #log { font: 12px/1.5 Consolas, monospace; color: var(--dim); max-height: 180px; overflow: auto;
+         white-space: pre-wrap; margin: 0; }
+  .note { color: var(--dim); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>FilMog Control</h1>
+    <span id="link" class="pill">disconnected</span>
+    <button id="connect">Connect</button>
+  </header>
+
+  <div id="banner"></div>
+
+  <section class="panel grid">
+    <div class="stat"><div class="k">Smoke</div><div class="v" id="fogState">–</div></div>
+    <div class="stat"><div class="k">Fog power</div><div class="v" id="powerV">–</div></div>
+    <div class="stat"><div class="k">Fan</div><div class="v" id="fanV">–</div></div>
+    <div class="stat"><div class="k">Batteries</div>
+      <div class="bats">
+        <div class="bat"><span>A</span><div class="track"><div class="fill" id="batA"></div></div><b id="batAV">–</b></div>
+        <div class="bat"><span>B</span><div class="track"><div class="fill" id="batB"></div></div><b id="batBV">–</b></div>
+      </div>
+    </div>
+    <div class="stat"><div class="k">Status age</div><div class="v" id="ageV">–</div></div>
+  </section>
+
+  <section class="panel" style="display:grid; gap:12px">
+    <button id="hold" disabled>HOLD TO FOG<small>or hold Space · max 15 s</small></button>
+    <div class="row">
+      <span>Burst</span>
+      <button class="burst" data-s="1" disabled>1 s</button>
+      <button class="burst" data-s="2" disabled>2 s</button>
+      <button class="burst" data-s="5" disabled>5 s</button>
+      <span class="custom">
+        <input id="burstMs" type="number" min="50" max="10000" step="50" value="100" disabled>
+        <span>ms</span>
+        <button id="burstGo" disabled>Burst</button>
+      </span>
+      <button id="stop">STOP</button>
+    </div>
+  </section>
+
+  <section class="panel grid" style="grid-template-columns: 1fr 1fr">
+    <label>
+      <span class="lv">Fog power <b id="powerL">15000</b></span>
+      <input id="power" type="range" min="15000" max="40000" step="5000" value="15000" disabled>
+    </label>
+    <label>
+      <span class="lv">Fan <b id="fanL">61 %</b></span>
+      <input id="fan" type="range" min="61" max="100" step="13" value="61" disabled>
+    </label>
+  </section>
+
+  <section class="panel">
+    <pre id="log"></pre>
+  </section>
+
+  <p class="note">The fogger has no watchdog of its own: it fogs until it hears "smoke off". This page sends
+    stop on release, blur, tab switch, close and reconnect, but if the PC dies mid-burst the fogger keeps
+    going, so stay near the battery. Turn the real remote off first: the fogger takes one connection at a time.</p>
+</main>
+
+<script>
+const SMOKE_ON = [0x55, 0xaa, 0x00], SMOKE_OFF = [0x55, 0xaa, 0x02];
+const MAX_HOLD_MS = 15000, BACKLOG_MS = 1500;
+const $ = id => document.getElementById(id);
+
+let dev = null, tx = null, connectedAt = 0, lastFrameAt = 0;
+let fogging = false, holding = false, holdStart = 0, burstTimer = null, lastStopAt = 0;
+let wantConnected = false, queue = Promise.resolve();
+const rx = [];
+
+function log(msg) {
+  const t = new Date().toLocaleTimeString();
+  const el = $("log");
+  el.textContent = `${t}  ${msg}\n` + el.textContent.split("\n").slice(0, 80).join("\n");
+}
+
+// Web Bluetooth rejects overlapping GATT ops, so every write goes through one queue
+function send(bytes, label) {
+  queue = queue.then(async () => {
+    if (!tx) throw new Error("not connected");
+    await tx.writeValueWithoutResponse(new Uint8Array(bytes));
+    if (label) log(label);
+  }).catch(e => log(`write failed: ${e.message}`));
+  return queue;
+}
+
+function stopNow(why) {
+  lastStopAt = performance.now();
+  send(SMOKE_OFF, `smoke OFF (${why})`);
+  setTimeout(() => send(SMOKE_OFF), 150);  // belt and braces
+}
+
+function setConnected(on) {
+  $("link").textContent = on ? "connected" : "disconnected";
+  $("link").className = "pill " + (on ? "ok" : "bad");
+  for (const el of document.querySelectorAll("#hold, .burst, #burstMs, #burstGo, #power, #fan")) el.disabled = !on;
+  $("connect").textContent = on ? "Disconnect" : "Connect";
+}
+
+function banner(text) {
+  $("banner").textContent = text || "";
+  $("banner").classList.toggle("show", !!text);
+}
+
+async function attach() {
+  const server = await dev.gatt.connect();
+  connectedAt = performance.now();
+  rx.length = 0;
+  tx = await (await server.getPrimaryService(0xfff0)).getCharacteristic(0xfff2);
+  // the CH9141 emits the fogger's UART stream on FFE1 (sometimes FFF1): listen to both
+  for (const [svc, chr] of [[0xffe0, 0xffe1], [0xfff0, 0xfff1]]) {
+    try {
+      const c = await (await server.getPrimaryService(svc)).getCharacteristic(chr);
+      c.addEventListener("characteristicvaluechanged", e => {
+        const v = e.target.value;
+        feed(new Uint8Array(v.buffer, v.byteOffset, v.byteLength));
+      });
+      await c.startNotifications();
+    } catch (e) { log(`notify ${chr.toString(16)}: ${e.message}`); }
+  }
+  setConnected(true);
+  banner("");
+  stopNow("safe start");
+  log("connected");
+}
+
+async function connect() {
+  if (!navigator.bluetooth) { banner("This browser has no Web Bluetooth. Use Chrome or Edge on http://localhost."); return; }
+  try {
+    dev = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: "CH9141" }], optionalServices: [0xfff0, 0xffe0],
+    });
+    dev.addEventListener("gattserverdisconnected", onDisconnect);
+    wantConnected = true;
+    await attach();
+  } catch (e) { log(`connect: ${e.message}`); }
+}
+
+function onDisconnect() {
+  tx = null;
+  holding = false; $("hold").classList.remove("active");
+  clearTimeout(burstTimer); burstTimer = null;
+  setConnected(false);
+  if (!wantConnected) return;
+  banner(fogging ? "LINK LOST WHILE FOGGING — reconnecting to send stop. If smoke continues, pull the battery!"
+                 : "Link lost — reconnecting…");
+  const retry = async () => {
+    if (!wantConnected || dev.gatt.connected) return;
+    try { await attach(); } catch (e) { setTimeout(retry, 1500); }
+  };
+  setTimeout(retry, 500);
+}
+
+// status frames: aa 55 14 | ? | power u32 | fan% | ? | tank event | ? | batA | batB | ? ? | fogging | ff ff ff
+function feed(chunk) {
+  if (performance.now() - connectedAt < BACKLOG_MS) return;  // CH9141 dumps stale backlog on subscribe
+  rx.push(...chunk);
+  for (;;) {
+    let i = 0;
+    while (i + 1 < rx.length && !(rx[i] === 0xaa && rx[i + 1] === 0x55)) i++;
+    if (i) rx.splice(0, i);
+    if (rx.length < 3 || rx.length < rx[2]) return;
+    const f = rx.splice(0, rx[2]);
+    if (f.length >= 17) onFrame(f);
+  }
+}
+
+function onFrame(f) {
+  lastFrameAt = performance.now();
+  const power = ((f[4] << 24) | (f[5] << 16) | (f[6] << 8) | f[7]) >>> 0;
+  const wasFogging = fogging;
+  fogging = f[16] === 1;
+  $("fogState").textContent = fogging ? "FOGGING" : "idle";
+  $("fogState").classList.toggle("on", fogging);
+  $("powerV").textContent = `${Math.round(power / 400)} %`;
+  $("fanV").textContent = `${f[8]} %`;
+  showBattery("batA", f[12]);
+  showBattery("batB", f[13]);
+  if (f[10] === 2) log("fogger reports: tank connected");
+  if (fogging !== wasFogging) log(fogging ? "fogger: smoke started" : "fogger: smoke stopped");
+  if (document.activeElement !== $("power")) { $("power").value = power; $("powerL").textContent = power; }
+  if (document.activeElement !== $("fan")) { $("fan").value = f[8]; $("fanL").textContent = `${f[8]} %`; }
+}
+
+// status bytes 12/13 drift down slowly over use; assumed to be percent until calibrated
+const BATTERY_FULL = 100;
+function showBattery(id, raw) {
+  const pct = Math.max(0, Math.min(100, raw / BATTERY_FULL * 100));
+  const fill = $(id);
+  fill.style.width = `${pct}%`;
+  fill.style.background = pct > 50 ? "var(--ok)" : pct > 20 ? "var(--warn)" : "var(--bad)";
+  $(id + "V").textContent = raw;
+}
+
+// watchdog: smoke the UI didn't ask for gets stopped, holds are capped
+setInterval(() => {
+  const now = performance.now();
+  if (holding && now - holdStart > MAX_HOLD_MS) { log("max hold reached"); endHold(); }
+  if (tx && fogging && !holding && !burstTimer && now - lastStopAt > 500) stopNow("watchdog");
+  $("ageV").textContent = lastFrameAt ? `${((now - lastFrameAt) / 1000).toFixed(1)} s` : "–";
+}, 200);
+
+function startHold() {
+  if (!tx || holding) return;
+  holding = true; holdStart = performance.now();
+  $("hold").classList.add("active");
+  send(SMOKE_ON, "smoke ON (hold)");
+}
+function endHold() {
+  if (!holding) return;
+  holding = false;
+  $("hold").classList.remove("active");
+  stopNow("released");
+}
+
+const hold = $("hold");
+hold.addEventListener("pointerdown", e => { e.preventDefault(); hold.setPointerCapture(e.pointerId); startHold(); });
+for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) hold.addEventListener(ev, endHold);
+hold.addEventListener("contextmenu", e => e.preventDefault());
+window.addEventListener("keydown", e => {
+  if (e.code === "Space" && !e.repeat && document.activeElement.tagName !== "INPUT") { e.preventDefault(); startHold(); }
+});
+window.addEventListener("keyup", e => { if (e.code === "Space") endHold(); });
+window.addEventListener("blur", endHold);
+document.addEventListener("visibilitychange", () => { if (document.hidden) endHold(); });
+window.addEventListener("pagehide", () => { if (tx) tx.writeValueWithoutResponse(new Uint8Array(SMOKE_OFF)); });
+
+function burst(ms) {
+  if (!tx || holding || burstTimer) return;
+  send(SMOKE_ON, `smoke ON (${ms} ms burst)`);
+  burstTimer = setTimeout(() => { burstTimer = null; stopNow("burst done"); }, ms);
+}
+for (const b of document.querySelectorAll(".burst")) {
+  b.addEventListener("click", () => burst(Number(b.dataset.s) * 1000));
+}
+
+function customBurst() {
+  const el = $("burstMs");
+  const ms = Math.round(Math.min(10000, Math.max(50, Number(el.value) || 100)));
+  el.value = ms;  // show the clamped value that was actually used
+  burst(ms);
+}
+$("burstGo").addEventListener("click", customBurst);
+$("burstMs").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); customBurst(); } });
+
+$("stop").addEventListener("click", () => {
+  clearTimeout(burstTimer); burstTimer = null;
+  holding = false; $("hold").classList.remove("active");
+  stopNow("STOP button");
+});
+
+$("power").addEventListener("input", e => $("powerL").textContent = e.target.value);
+$("power").addEventListener("change", e => {
+  const v = Number(e.target.value);
+  send([0x55, 0xaa, 0x04, (v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255], `power → ${v}`);
+  e.target.blur();
+});
+$("fan").addEventListener("input", e => $("fanL").textContent = `${e.target.value} %`);
+$("fan").addEventListener("change", e => {
+  send([0x55, 0xaa, 0x05, Number(e.target.value), 0x64], `fan → ${e.target.value} %`);
+  e.target.blur();
+});
+
+$("connect").addEventListener("click", () => {
+  if (dev && dev.gatt.connected) {
+    stopNow("disconnect");
+    wantConnected = false;
+    setTimeout(() => dev.gatt.disconnect(), 400);
+  } else connect();
+});
+
+setConnected(false);
+</script>
+</body>
+</html>

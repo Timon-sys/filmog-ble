@@ -1,0 +1,14 @@
+# private: Claude session transcript and transfer notes
+claude-session/
+
+# raw captures and research helpers
+research/
+
+# PlatformIO build output
+.pio/
+
+# not part of the repo yet
+fogclone/
+relay.py
+fogview.py
+fog_burst.py
