@@ -92,7 +92,7 @@ Byte 10 is `02` once after power-up and `00` from then on. That's the "oil tank 
 
 ### Still unknown
 
-We don't know the battery scale, or what bytes 3 and 11 mean (byte 11 showed `08` while the battery values were rising, so maybe a charging flag). We also don't know what power above 40000 does, or what `07` and the `08` keepalive tell the fogger. If you have a FilMog and figure any of these out, please open an issue.
+We don't know the battery scale, or what bytes 3 and 11 mean (byte 11 showed `08` while the battery values were rising, so maybe a charging flag). Power above 40000 is accepted and drives the coil much harder than the remote ever does: it crackles deeply and puts out a lot more smoke. It was only tried in short bursts, so nobody knows yet what it does to the coil and wick over time. We also don't know what `07` and the `08` keepalive tell the fogger. If you have a FilMog and figure any of these out, please open an issue.
 
 ## Notes
 
