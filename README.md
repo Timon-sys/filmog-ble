@@ -91,3 +91,5 @@ We don't know the battery scale, or what bytes 3 and 9 mean. We also don't know 
 ## Notes
 
 This project isn't affiliated with or endorsed by Ulanzi. It's a hobby project for talking to a fogger you own. There's a heater inside a smoke machine, so use this at your own risk and don't leave it fogging unattended.
+
+Released under the MIT License, see [LICENSE](LICENSE).
