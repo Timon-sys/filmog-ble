@@ -8,17 +8,18 @@ A single HTML page that controls a Ulanzi FilMog smoke machine over Bluetooth. Y
 
 Web Bluetooth only runs in a secure context. On your own PC, `localhost` counts as one, so a local web server is enough. From any other machine, the page has to be served over https.
 
-1. Switch the original remote off. The fogger accepts only one Bluetooth connection at a time.
-2. In this folder, run:
+1. Take the remote out of the fogger and put it down somewhere on the table. Make sure it's really off: with its screen dark it can still have Bluetooth on, and then it keeps the connection to itself. The fogger accepts only one Bluetooth connection at a time.
+2. Turn on only the fogger, using the button in the slot where the remote sat. It starts flashing, which means it's ready to connect.
+3. In this folder, run:
    ```
    python -m http.server 8765 --bind 127.0.0.1
    ```
-3. Open <http://localhost:8765/filmog.html> in Chrome or Edge. Firefox doesn't support Web Bluetooth.
-4. Click Connect and pick `CH9141BLE2U`.
+4. Open <http://localhost:8765/filmog.html> in Chrome or Edge. Firefox doesn't support Web Bluetooth.
+5. Click Connect and pick `CH9141BLE2U`.
 
 The big button fogs while you hold it, and so does the Space key. Either way it stops after 15 seconds at most. There are fixed 1, 2 and 5 second bursts, plus a field for any length from 50 to 10000 ms. Two sliders (with number fields for exact values) set the coil power and the air pump, and they follow whatever the fogger reports. The status panel shows whether it's smoking, the current power and fan, both batteries as bars, and how old the last status frame is.
 
-By default the page keeps to safe limits: power 8000 to 40000 like the remote, and the fan between 22 and 100. Before any smoke it checks what the fogger has stored and corrects anything outside those limits, and it stops the smoke if the pump isn't running while the coil heats. At the bottom, "Unlock all values" removes those limits (any power, fan 0 to 255, holds and bursts up to 60 s) and turns the pump guard into a warning. It always starts locked.
+By default the page keeps to safe limits: power 8000 to 40000 like the remote, and the fan between 22 and 100. Before any smoke it checks what the fogger has stored and corrects anything outside those limits, and it stops the smoke if the pump isn't running while the coil heats. At the bottom, "Unlock all values" removes those limits (any power, fan 0 to 100, holds and bursts up to 60 s) and turns the pump guard into a warning. It always starts locked.
 
 ## How we got here
 
