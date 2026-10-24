@@ -16,7 +16,9 @@ Web Bluetooth only runs in a secure context. On your own PC, `localhost` counts 
 3. Open <http://localhost:8765/filmog.html> in Chrome or Edge. Firefox doesn't support Web Bluetooth.
 4. Click Connect and pick `CH9141BLE2U`.
 
-The big button fogs while you hold it, and so does the Space key. Either way it stops after 15 seconds at most. There are fixed 1, 2 and 5 second bursts, plus a field for any length from 50 to 10000 ms. Two sliders set fog power and fan speed, and they follow whatever the fogger reports. The status panel shows whether it's smoking, the current power and fan, both batteries as bars, and how old the last status frame is.
+The big button fogs while you hold it, and so does the Space key. Either way it stops after 15 seconds at most. There are fixed 1, 2 and 5 second bursts, plus a field for any length from 50 to 10000 ms. Two sliders (with number fields for exact values) set the coil power and the air pump, and they follow whatever the fogger reports. The status panel shows whether it's smoking, the current power and fan, both batteries as bars, and how old the last status frame is.
+
+By default the page keeps to safe limits: power 8000 to 40000 like the remote, and the fan between 22 and 100. Before any smoke it checks what the fogger has stored and corrects anything outside those limits, and it stops the smoke if the pump isn't running while the coil heats. At the bottom, "Unlock all values" removes those limits (any power, fan 0 to 255, holds and bursts up to 60 s) and turns the pump guard into a warning. It always starts locked.
 
 ## How we got here
 
@@ -67,7 +69,7 @@ Every command starts with `55 aa`, followed by a command byte and its payload.
 | `55 aa 00` | smoke on |
 | `55 aa 02` | smoke off, the only way to stop it |
 | `55 aa 04 <u32 big-endian>` | fog power; the remote goes from 8000 (its lowest setting) to 40000, and we've also seen 15000, 25000, 30000 and 35000 |
-| `55 aa 05 <fan %> 64` | fan; we've seen 35, 61, 74, 87 and 100, which fits steps of 13 |
+| `55 aa 05 <fan %> 64` | air pump; any byte is accepted, the pump tops out at 100, and the remote's steps of 13 are only its own UI |
 | `55 aa 07 00 00` | sent by the remote when it connects; purpose unknown, not needed |
 | `55 aa 08 <n> 00` | remote keepalive, about every 0.5 s; `n` drifts slowly (the remote's battery?); not needed |
 
@@ -80,15 +82,17 @@ The fogger keeps its power and fan settings when the remote or the PC disconnect
 20 bytes, about ten times a second:
 
 ```
-aa 55 14 | ?? | power (u32 BE) | fan % | 64 | tank | 00 | batt A | batt B | 00 00 | fogging | ff ff ff
+aa 55 14 | ?? | power (u32 BE) | fan % | pump | tank | ?? | batt L | batt R | 00 00 | fogging | ff ff ff
  0  1  2 |  3 |   4  5  6  7   |   8   |  9 |  10  | 11 |   12   |   13   | 14 15 |   16    | 17 18 19
 ```
+
+The FilMog is basically a heated coil with an air pump. "Power" is the coil and "fan" is the pump. Byte 8 is the fan setting, and byte 9 is what the pump actually does: it reads `64` (100) while the pump runs and `00` when the fan is set to 0. Fogging with the fan at 0 heats the coil with no airflow, and the wick crackles. Below power 8000 the coil doesn't get hot enough to make any smoke, and power 0 turned the fogger's LED red for the duration of the burst.
 
 Byte 10 is `02` once after power-up and `00` from then on. That's the "oil tank connected" event. Byte 16 is `01` while the fogger is smoking. Bytes 12 and 13 slowly drop with use, so they're almost certainly the two batteries. Their scale isn't confirmed, and the page assumes they're percentages.
 
 ### Still unknown
 
-We don't know the battery scale, or what bytes 3 and 9 mean. We also don't know whether fan values below 35 or power values outside 8000 to 40000 do anything useful, or what `07` and the `08` keepalive tell the fogger. If you have a FilMog and figure any of these out, please open an issue.
+We don't know the battery scale, or what bytes 3 and 11 mean (byte 11 showed `08` while the battery values were rising, so maybe a charging flag). We also don't know what power above 40000 does, or what `07` and the `08` keepalive tell the fogger. If you have a FilMog and figure any of these out, please open an issue.
 
 ## Notes
 
